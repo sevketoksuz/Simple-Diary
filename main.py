@@ -121,16 +121,18 @@ def content_window(entry_id):
 def main_window():
     root = tk.Tk()
     root.title("My Diary")
+    root.geometry("300x200")  # Adjust size as needed
 
-    menu = tk.Menu(root)
-    root.config(menu=menu)
+    # Button to add a new entry
+    add_button = tk.Button(root, text="Add New Entry", command=add_entry_dialog)
+    add_button.pack(pady=10, padx=10, fill=tk.X)
 
-    file_menu = tk.Menu(menu)
-    menu.add_cascade(label="File", menu=file_menu)
-    file_menu.add_command(label="Add Entry", command=add_entry_dialog)
-    file_menu.add_command(label="View Entries", command=view_entries)
+    # Button to view all entries
+    view_button = tk.Button(root, text="View Entries", command=view_entries)
+    view_button.pack(pady=10, padx=10, fill=tk.X)
 
     root.mainloop()
+
 
 if __name__ == "__main__":
     init_db()
