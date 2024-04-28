@@ -45,7 +45,7 @@ def add_entry(title, content, date):
         logging.error(f"Error inserting entry: {e}")
         messagebox.showerror("Database Error", str(e))
 
-def update_entry(id, title, content):
+def update_entry(id, title, content, refresh_func):
     if not title.strip() or not content.strip():
         messagebox.showerror("Error", "Title and content cannot be empty.")
         return
@@ -55,17 +55,19 @@ def update_entry(id, title, content):
             c.execute('UPDATE entries SET title = ?, content = ? WHERE id = ?', (title, content, id))
             conn.commit()
         messagebox.showinfo("Success", "Entry updated successfully!")
+        refresh_func()
     except sqlite3.DatabaseError as e:
         logging.error(f"Error updating entry: {e}")
         messagebox.showerror("Database Error", str(e))
 
-def delete_entry(id):
+def delete_entry(id, refresh_func):
     try:
         with get_db_connection() as conn:
             c = conn.cursor()
             c.execute('DELETE FROM entries WHERE id = ?', (id,))
             conn.commit()
         messagebox.showinfo("Deleted", "Entry deleted successfully!")
+        refresh_func()
     except sqlite3.DatabaseError as e:
         logging.error(f"Error deleting entry: {e}")
         messagebox.showerror("Database Error", str(e))
@@ -114,19 +116,27 @@ def view_entries(filter=None):
     listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
     scrollbar.config(command=listbox.yview)
 
-    listbox.bind('<Double-1>', lambda event: on_select(event, listbox, entries))
+    def refresh_listbox():
+        listbox.delete(0, tk.END)
+        new_entries = get_entries(filter)
+        for entry in new_entries:
+            listbox.insert(tk.END, f"{entry[3]}: {entry[1]}")
+
+    listbox.bind('<Double-1>', lambda event: on_select(event, listbox, entries, refresh_listbox))
 
     search_entry = Entry(window)
     search_entry.pack(side=tk.TOP, fill=tk.X, padx=10, pady=5)
+    Button(window, text="Search", command=lambda: refresh_listbox()).pack(side=tk.TOP, pady=10)
 
-    Button(window, text="Search", command=lambda: view_entries(search_entry.get())).pack(side=tk.TOP, pady=10)
+    Button(window, text="Refresh", command=refresh_listbox).pack(side=tk.TOP, pady=10)
 
-def on_select(event, listbox, entries):
+
+def on_select(event, listbox, entries, refresh_func):
     index = listbox.curselection()[0]
     entry_id = entries[index][0]
-    content_window(entry_id)
+    content_window(entry_id, refresh_func)
 
-def content_window(entry_id):
+def content_window(entry_id, refresh_func):
     entry = next((e for e in get_entries() if e[0] == entry_id), None)
     if entry:
         dialog = Toplevel()
@@ -142,8 +152,8 @@ def content_window(entry_id):
         text.insert(tk.END, entry[2])
         text.pack(side=tk.TOP, fill=tk.BOTH, padx=10, pady=5, expand=True)
 
-        Button(dialog, text="Update", command=lambda: update_entry(entry[0], title_entry.get(), text.get("1.0", tk.END))).pack(side=tk.LEFT, padx=10, pady=10)
-        Button(dialog, text="Delete", command=lambda: delete_entry(entry[0]) and dialog.destroy()).pack(side=tk.RIGHT, padx=10, pady=10)
+        Button(dialog, text="Update", command=lambda: update_entry(entry[0], title_entry.get(), text.get("1.0", tk.END), refresh_func)).pack(side=tk.LEFT, padx=10, pady=10)
+        Button(dialog, text="Delete", command=lambda: delete_entry(entry[0], refresh_func) and dialog.destroy()).pack(side=tk.RIGHT, padx=10, pady=10)
 
         dialog.mainloop()
 
